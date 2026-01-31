@@ -1,36 +1,44 @@
 package com.technicalTest.supermarket.handler;
 
 
+import com.technicalTest.supermarket.dto.error.ErrorDTO;
 import com.technicalTest.supermarket.exception.NotFoundException;
-import com.technicalTest.supermarket.exception.SaleQuantityIncreaseNotAllowedException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<Object> handleUserNotFound(NotFoundException ex) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now());
-        body.put("status", HttpStatus.NOT_FOUND.value());
-        body.put("error", "NOT FOUND");
-        body.put("message", ex.getMessage());
-        return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+    public ResponseEntity<ErrorDTO> handleNotFoundException(NotFoundException ex) {
+        ErrorDTO dto = new ErrorDTO(LocalDateTime.now(), ex.getMessage());
+        return new ResponseEntity<>(dto, HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler(SaleQuantityIncreaseNotAllowedException.class)
-    public ResponseEntity<Object> handleSaleQuantityIncreaseNotAllowed(SaleQuantityIncreaseNotAllowedException ex) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("timestamp", LocalDateTime.now());
-        body.put("status", HttpStatus.CONFLICT.value());
-        body.put("error", "SALE QUANTITY INCREASE NOT ALLOWED");
-        body.put("message", ex.getMessage());
-        return new ResponseEntity<>(body, HttpStatus.CONFLICT);
+    @ExceptionHandler
+    public ResponseEntity<ErrorDTO> handleException(Exception ex) {
+        log.error("unknown exception.", ex);
+        ErrorDTO dto = new ErrorDTO(LocalDateTime.now(), ex.getMessage());
+        return new ResponseEntity<>(dto, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ErrorDTO> handleMethodArgumentNotValidException(
+            MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+        ErrorDTO dto = new ErrorDTO(LocalDateTime.now(), message);
+        return ResponseEntity.badRequest().body(dto);
     }
 }

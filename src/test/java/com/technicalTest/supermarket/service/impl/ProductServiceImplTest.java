@@ -1,8 +1,6 @@
 package com.technicalTest.supermarket.service.impl;
 
-import com.technicalTest.supermarket.dto.BranchDTO;
 import com.technicalTest.supermarket.dto.ProductDTO;
-import com.technicalTest.supermarket.entity.Branch;
 import com.technicalTest.supermarket.entity.Product;
 import com.technicalTest.supermarket.exception.NotFoundException;
 import com.technicalTest.supermarket.mapper.ProductMapperImpl;
@@ -12,23 +10,27 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @Import({ProductMapperImpl.class})
 @ExtendWith(SpringExtension.class)
 public class ProductServiceImplTest {
+
     @Autowired
     private ProductMapperImpl mapper;
     private ProductRepository repository;
@@ -42,130 +44,212 @@ public class ProductServiceImplTest {
         this.productServiceImpl = new ProductServiceImpl(repository, mapper);
     }
 
-    @Test
-    public void shouldGetProducts(){
-        //given
-        List<Product> mockProducts = MockFactory.getProducts();
-
-        //when
-        when(repository.findAll())
-                .thenReturn(MockFactory.getProducts());
-
-        //then
-        List<ProductDTO> product = productServiceImpl.getProducts();
-        assertEquals(1, product.size());
-
-        var firstBranch = product.get(0);
-        assertThat(firstBranch)
-                .extracting(
-                        ProductDTO::getId,
-                        ProductDTO::getName,
-                        ProductDTO::getCategory,
-                        ProductDTO::getPrice,
-                        ProductDTO::getStock
-                ).containsExactly(
-                        1L,
-                        "agua",
-                        "bebidas",
-                        BigDecimal.valueOf(1000),
-                        100
-                );
-
-        verify(repository).findAll();
-    }
 
     @Test
     void shouldCreateProduct(){
         //given
-        ProductDTO mockProductRequestDto = MockFactory.buildProductDtoRequestDto();
-        Product mockProduct = MockFactory.buildProductEntity();
+        ProductDTO requestDTO = MockFactory.buildProductRequestDTO();
+        Product product = MockFactory.buildProduct();
+        LocalDateTime registrationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
+        LocalDateTime modificationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
 
         //when
-        when(repository.save(any(Product.class))).thenReturn(mockProduct);
+        when(repository.save(any(Product.class))).thenReturn(product);
 
         //then
-        var created = productServiceImpl.createProduct(mockProductRequestDto);
+        var created = productServiceImpl.createProduct(requestDTO);
         assertThat(created)
                 .extracting(
                         ProductDTO::getId,
                         ProductDTO::getName,
-                        ProductDTO::getCategory,
-                        ProductDTO::getPrice,
-                        ProductDTO::getStock
+                        ProductDTO::getPrice
                 ).containsExactly(
-                        mockProduct.getId(),
-                        mockProduct.getName(),
-                        mockProduct.getCategory(),
-                        mockProduct.getPrice(),
-                        mockProduct.getStock()
+                        product.getId(),
+                        product.getName(),
+                        product.getPrice()
                 );
 
+        assertEquals(registrationDate, product.getRegistrationDate());
+        assertEquals(modificationDate, product.getModificationDate());
         verify(repository, times(1)).save(any(Product.class));
     }
 
+
     @Test
     void shouldUpdateProduct() {
+
         //given
         Long id = 1L;
-        Product mockProduct = MockFactory.buildProductEntity();
-        Product mockUpdatedProduct = MockFactory.buildProductEntity();
-        ProductDTO mockProductRequestDto = MockFactory.buildProductDtoRequestDto();
-        mockUpdatedProduct.setId(id);
-        mockUpdatedProduct.setName(mockProductRequestDto.getName());
-        mockUpdatedProduct.setCategory(mockProductRequestDto.getCategory());
-        mockUpdatedProduct.setPrice(mockProductRequestDto.getPrice());
-        mockUpdatedProduct.setStock(mockProductRequestDto.getStock());
+        Product product = MockFactory.buildProduct();
+        ProductDTO dto = MockFactory.buildProductRequestDTO();
+        LocalDateTime registrationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
+        LocalDateTime modificationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
+        product.setId(id);
+        product.setName("agua");
+        product.setPrice(BigDecimal.valueOf(1000));
+        product.setRegistrationDate(registrationDate);
+        product.setModificationDate(modificationDate);
 
         //when
-        when(repository.findById(id)).thenReturn(Optional.of(mockUpdatedProduct));
-        when(repository.save(mockUpdatedProduct)).thenReturn(mockUpdatedProduct);
+        when(repository.findById(id)).thenReturn(Optional.of(product));
+        when(repository.save(product)).thenReturn(product);
 
         //then
-        var updated = productServiceImpl.updateProduct(id, mockProductRequestDto);
+        var updated = productServiceImpl.updateProduct(id, dto);
         assertThat(updated)
                 .extracting(
                         ProductDTO::getId,
                         ProductDTO::getName,
-                        ProductDTO::getCategory,
-                        ProductDTO::getPrice,
-                        ProductDTO::getStock
+                        ProductDTO::getPrice
                 ).containsExactly(
-                        mockUpdatedProduct.getId(),
-                        mockUpdatedProduct.getName(),
-                        mockUpdatedProduct.getCategory(),
-                        mockUpdatedProduct.getPrice(),
-                        mockUpdatedProduct.getStock()
+                        product.getId(),
+                        product.getName(),
+                        product.getPrice()
                 );
 
+        assertEquals(registrationDate, product.getRegistrationDate());
+        assertEquals(modificationDate, product.getModificationDate());
         verify(repository).findById(id);
         verify(repository, times(1)).save(any(Product.class));
     }
 
+
     @Test
     void shouldThrowErrorWhenProductIsNotFoundForUpdate() {
-        //given
+        // given
         Long id = 1L;
-        ProductDTO mockProductRequestDto = MockFactory.buildProductDtoRequestDto();
+        ProductDTO dto = MockFactory.buildProductRequestDTO();
 
-        //when
+        // when
         when(repository.findById(id)).thenReturn(Optional.empty());
 
-        //then
-        var error = assertThrows(NotFoundException.class, () -> productServiceImpl.updateProduct(id, mockProductRequestDto));
-        assertEquals("El producto no exíste.", error.getMessage());
+        // then
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> productServiceImpl.updateProduct(id, dto)
+        );
 
-        verify(repository, times(0)).save(any(Product.class));
+        assertEquals("El producto no existe", exception.getMessage());
+        verify(repository, never()).save(any(Product.class));
     }
+
+
 
     @Test
     void shouldDeleteProduct() {
         // given
         Long id = 1L;
+        Product product = MockFactory.buildProduct();
 
         // when
-        productServiceImpl.deleteProduct(id);
+        when(repository.findById(id)).thenReturn(Optional.of(product));
 
         // then
-        verify(repository,times(1)).deleteById(id);
+        productServiceImpl.deleteProduct(id);
+        verify(repository, times(1)).findById(id);
+        verify(repository, times(1)).delete(product);
+        verify(repository, never()).save(any());
+    }
+
+
+    @Test
+    void shouldThrowErrorWhenProductIsNotFoundForDelete() {
+        // given
+        Long id = 1L;
+
+        //when
+        when(repository.findById(id)).thenReturn(Optional.empty());
+
+        // then
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> productServiceImpl.deleteProduct(id)
+        );
+
+        assertEquals("El producto no existe", exception.getMessage());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void shouldThrowErrorWhenProductIsDeleted() {
+        // given
+        Long id = 1L;
+        Product product = MockFactory.buildDeletedProduct();
+
+        //when
+        when(repository.findById(id)).thenReturn(Optional.of(product));
+
+        // then
+        NotFoundException exception = assertThrows(
+                NotFoundException.class,
+                () -> productServiceImpl.getProductById(id)
+        );
+
+        assertEquals("El producto no existe", exception.getMessage());
+        verify(repository, times(1)).findById(id);
+    }
+
+
+    @Test
+    void shouldGetProductById() {
+        // given
+        Long id = 1L;
+        Product product = MockFactory.buildProduct();
+        product.setDeleted(false);
+
+        when(repository.findById(id)).thenReturn(Optional.of(product));
+
+        // when
+        ProductDTO result = productServiceImpl.getProductById(id);
+
+        // then
+        assertNotNull(result);
+        assertEquals(product.getId(), result.getId());
+        assertEquals(product.getName(), result.getName());
+        assertEquals(product.getPrice(), result.getPrice());
+        assertEquals(product.getRegistrationDate(), result.getRegistrationDate());
+        assertEquals(product.getModificationDate(), result.getModificationDate());
+
+        verify(repository, times(1)).findById(id);
+    }
+
+
+
+    @Test
+    void shouldThrowErrorWhenProductIsNotFoundForGetById() {
+        //given
+        Long id = 1L;
+
+        //when
+        when(repository.findById(id)).thenReturn(Optional.empty());
+
+        //then
+        var error = assertThrows(NotFoundException.class, () -> productServiceImpl.getProductById(id));
+        assertEquals("El producto no existe", error.getMessage());
+        verify(repository, times(0)).save(any(Product.class));
+    }
+
+
+    @Test
+    void shouldGetAllProducts() {
+        // given
+        Pageable pageable = MockFactory.buildPageable();
+        Page<Product> productPage = MockFactory.getProductsPage(pageable);
+        LocalDateTime registrationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
+        LocalDateTime modificationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
+
+        // when
+        when(repository.findAll(pageable)).thenReturn(productPage);
+
+        // then
+        Page<ProductDTO> products = productServiceImpl.getProducts(pageable);
+        assertNotNull(products);
+        assertEquals(1, products.getTotalElements());
+        assertEquals(1L, products.getContent().get(0).getId());
+        assertEquals("agua", products.getContent().get(0).getName());
+        assertEquals(BigDecimal.valueOf(1000), products.getContent().get(0).getPrice());
+        assertEquals(registrationDate, products.getContent().get(0).getRegistrationDate());
+        assertEquals(modificationDate, products.getContent().get(0).getModificationDate());
+        verify(repository, times(1)).findAll(pageable);
     }
 }
