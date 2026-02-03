@@ -1,0 +1,60 @@
+package com.technicalTest.supermarket.controller;
+
+import com.technicalTest.supermarket.dto.ProductDTO;
+import com.technicalTest.supermarket.service.ProductService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/products")
+public class ProductController {
+
+    private final ProductService service;
+
+    @GetMapping
+    public ResponseEntity<Page<ProductDTO>> getProducts(@PageableDefault Pageable pageable){
+        Page<ProductDTO> products = service.getProducts(pageable);
+        return ResponseEntity.ok(products);
+    }
+
+    @GetMapping("/deleted")
+    public ResponseEntity <Page<ProductDTO>> getDeleteProducts(@PageableDefault Pageable pageable) {
+        Page<ProductDTO> products = service.getDeletedProducts(pageable);
+        return ResponseEntity.ok(products);
+    }
+
+    @GetMapping("/{id}")
+        public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id){
+        return ResponseEntity.ok(service.getProductById(id));
+    }
+
+    @PostMapping
+    public ResponseEntity<ProductDTO> createProduct(@Valid @RequestBody ProductDTO dto){
+        ProductDTO created = service.createProduct(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ProductDTO> updateProduct(@PathVariable Long id, @Valid @RequestBody ProductDTO dto){
+        return ResponseEntity.ok(service.updateProduct(id, dto));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteProduct(@PathVariable Long id){
+        service.deleteProduct(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/restore")
+    public ResponseEntity<ProductDTO> restoreProduct(@PathVariable Long id){
+        return ResponseEntity.ok(service.restoreProduct(id));
+    }
+
+}
