@@ -59,11 +59,4 @@ public class MockFactory {
         List<ProductDTO> products = new ArrayList<>(List.of(buildProductResponseDTO()));
         return new PageImpl<>(products, pageable, products.size());
     }
-
-    public static Product buildDeletedProduct() {
-        Product product = buildProduct();
-        product.setDeleted(true);
-        return product;
-    }
-
 }

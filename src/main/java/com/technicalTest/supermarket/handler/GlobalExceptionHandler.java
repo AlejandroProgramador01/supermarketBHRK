@@ -18,15 +18,21 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(NotFoundException.class)
-    public ResponseEntity<ErrorDTO> handleNotFoundException(NotFoundException ex) {
-        ErrorDTO dto = new ErrorDTO(LocalDateTime.now(), ex.getMessage());
+    public ResponseEntity<ErrorDTO>handleNotFoundException(NotFoundException ex){
+        ErrorDTO dto = new ErrorDTO(LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage());
         return new ResponseEntity<>(dto, HttpStatus.NOT_FOUND);
     }
 
     @ExceptionHandler
     public ResponseEntity<ErrorDTO> handleException(Exception ex) {
         log.error("unknown exception.", ex);
-        ErrorDTO dto = new ErrorDTO(LocalDateTime.now(), ex.getMessage());
+        ErrorDTO dto = new ErrorDTO(LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                HttpStatus.NOT_FOUND.value(),
+                ex.getMessage());
         return new ResponseEntity<>(dto, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
@@ -38,7 +44,10 @@ public class GlobalExceptionHandler {
                 .stream()
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .collect(Collectors.joining(", "));
-        ErrorDTO dto = new ErrorDTO(LocalDateTime.now(), message);
+        ErrorDTO dto = new ErrorDTO(LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                HttpStatus.NOT_FOUND.value(),
+                message);
         return ResponseEntity.badRequest().body(dto);
     }
 }

@@ -48,7 +48,7 @@ public class ProductServiceImplTest {
     @Test
     void shouldCreateProduct(){
         //given
-        ProductDTO requestDTO = MockFactory.buildProductRequestDTO();
+        ProductDTO dto = MockFactory.buildProductRequestDTO();
         Product product = MockFactory.buildProduct();
         LocalDateTime registrationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
         LocalDateTime modificationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
@@ -57,7 +57,7 @@ public class ProductServiceImplTest {
         when(repository.save(any(Product.class))).thenReturn(product);
 
         //then
-        var created = productServiceImpl.createProduct(requestDTO);
+        var created = productServiceImpl.createProduct(dto);
         assertThat(created)
                 .extracting(
                         ProductDTO::getId,
@@ -79,23 +79,21 @@ public class ProductServiceImplTest {
     void shouldUpdateProduct() {
 
         //given
-        Long id = 1L;
         Product product = MockFactory.buildProduct();
         ProductDTO dto = MockFactory.buildProductRequestDTO();
         LocalDateTime registrationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
         LocalDateTime modificationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
-        product.setId(id);
         product.setName("agua");
         product.setPrice(BigDecimal.valueOf(1000));
         product.setRegistrationDate(registrationDate);
         product.setModificationDate(modificationDate);
 
         //when
-        when(repository.findById(id)).thenReturn(Optional.of(product));
+        when(repository.findById(product.getId())).thenReturn(Optional.of(product));
         when(repository.save(product)).thenReturn(product);
 
         //then
-        var updated = productServiceImpl.updateProduct(id, dto);
+        var updated = productServiceImpl.updateProduct(product.getId(), dto);
         assertThat(updated)
                 .extracting(
                         ProductDTO::getId,
@@ -109,7 +107,7 @@ public class ProductServiceImplTest {
 
         assertEquals(registrationDate, product.getRegistrationDate());
         assertEquals(modificationDate, product.getModificationDate());
-        verify(repository).findById(id);
+        verify(repository).findById(product.getId());
         verify(repository, times(1)).save(any(Product.class));
     }
 
@@ -117,92 +115,47 @@ public class ProductServiceImplTest {
     @Test
     void shouldThrowErrorWhenProductIsNotFoundForUpdate() {
         // given
-        Long id = 1L;
         ProductDTO dto = MockFactory.buildProductRequestDTO();
 
         // when
-        when(repository.findById(id)).thenReturn(Optional.empty());
+        when(repository.findById(dto.getId())).thenReturn(Optional.empty());
 
         // then
         NotFoundException exception = assertThrows(
                 NotFoundException.class,
-                () -> productServiceImpl.updateProduct(id, dto)
+                () -> productServiceImpl.updateProduct(dto.getId(), dto)
         );
 
-        assertEquals("El producto no existe", exception.getMessage());
+        assertEquals("the product does not exist", exception.getMessage());
         verify(repository, never()).save(any(Product.class));
     }
-
 
 
     @Test
     void shouldDeleteProduct() {
         // given
-        Long id = 1L;
         Product product = MockFactory.buildProduct();
 
         // when
-        when(repository.findById(id)).thenReturn(Optional.of(product));
+        when(repository.findById(product.getId())).thenReturn(Optional.of(product));
 
         // then
-        productServiceImpl.deleteProduct(id);
-        verify(repository, times(1)).findById(id);
-        verify(repository, times(1)).delete(product);
-        verify(repository, never()).save(any());
-    }
-
-
-    @Test
-    void shouldThrowErrorWhenProductIsNotFoundForDelete() {
-        // given
-        Long id = 1L;
-
-        //when
-        when(repository.findById(id)).thenReturn(Optional.empty());
-
-        // then
-        NotFoundException exception = assertThrows(
-                NotFoundException.class,
-                () -> productServiceImpl.deleteProduct(id)
-        );
-
-        assertEquals("El producto no existe", exception.getMessage());
-        verify(repository, never()).save(any());
-    }
-
-    @Test
-    void shouldThrowErrorWhenProductIsDeleted() {
-        // given
-        Long id = 1L;
-        Product product = MockFactory.buildDeletedProduct();
-
-        //when
-        when(repository.findById(id)).thenReturn(Optional.of(product));
-
-        // then
-        NotFoundException exception = assertThrows(
-                NotFoundException.class,
-                () -> productServiceImpl.getProductById(id)
-        );
-
-        assertEquals("El producto no existe", exception.getMessage());
-        verify(repository, times(1)).findById(id);
+        productServiceImpl.deleteProduct(product.getId());
+        verify(repository, times(1)).findById(product.getId());
+        verify(repository, times(1)).save(product);
     }
 
 
     @Test
     void shouldGetProductById() {
         // given
-        Long id = 1L;
         Product product = MockFactory.buildProduct();
-        product.setDeleted(false);
-
-        when(repository.findById(id)).thenReturn(Optional.of(product));
 
         // when
-        ProductDTO result = productServiceImpl.getProductById(id);
+        when(repository.findById(product.getId())).thenReturn(Optional.of(product));
 
         // then
+        ProductDTO result = productServiceImpl.getProductById(product.getId());
         assertNotNull(result);
         assertEquals(product.getId(), result.getId());
         assertEquals(product.getName(), result.getName());
@@ -210,28 +163,26 @@ public class ProductServiceImplTest {
         assertEquals(product.getRegistrationDate(), result.getRegistrationDate());
         assertEquals(product.getModificationDate(), result.getModificationDate());
 
-        verify(repository, times(1)).findById(id);
+        verify(repository, times(1)).findById(product.getId());
     }
-
 
 
     @Test
     void shouldThrowErrorWhenProductIsNotFoundForGetById() {
         //given
-        Long id = 1L;
+        Product product = MockFactory.buildProduct();
 
         //when
-        when(repository.findById(id)).thenReturn(Optional.empty());
+        when(repository.findById(product.getId())).thenReturn(Optional.empty());
 
         //then
-        var error = assertThrows(NotFoundException.class, () -> productServiceImpl.getProductById(id));
-        assertEquals("El producto no existe", error.getMessage());
-        verify(repository, times(0)).save(any(Product.class));
+        var error = assertThrows(NotFoundException.class, () -> productServiceImpl.getProductById(product.getId()));
+        assertEquals("the product does not exist", error.getMessage());
     }
 
 
     @Test
-    void shouldGetAllProducts() {
+    void shouldGetProducts() {
         // given
         Pageable pageable = MockFactory.buildPageable();
         Page<Product> productPage = MockFactory.getProductsPage(pageable);
@@ -251,5 +202,58 @@ public class ProductServiceImplTest {
         assertEquals(registrationDate, products.getContent().get(0).getRegistrationDate());
         assertEquals(modificationDate, products.getContent().get(0).getModificationDate());
         verify(repository, times(1)).findAll(pageable);
+    }
+
+
+    @Test
+    void shouldGetDeleteProducts() {
+        // given
+        Pageable pageable = MockFactory.buildPageable();
+        Page<Product> productPage = MockFactory.getProductsPage(pageable);
+        LocalDateTime registrationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
+        LocalDateTime modificationDate = LocalDateTime.of(2026, 1, 1, 1, 1, 1);
+        productPage.getContent().forEach(product -> product.setDeleted(true));
+
+        // when
+        when(repository.findAllDeleted(pageable)).thenReturn(productPage);
+
+        // then
+        Page<ProductDTO> products = productServiceImpl.getDeletedProducts(pageable);
+        assertNotNull(products);
+        assertEquals(1, products.getTotalElements());
+        assertEquals(1L, products.getContent().get(0).getId());
+        assertEquals("agua", products.getContent().get(0).getName());
+        assertEquals(BigDecimal.valueOf(1000), products.getContent().get(0).getPrice());
+        assertEquals(registrationDate, products.getContent().get(0).getRegistrationDate());
+        assertEquals(modificationDate, products.getContent().get(0).getModificationDate());
+        verify(repository, times(1)).findAllDeleted(pageable);
+    }
+
+
+    @Test
+    void shouldRestoreProduct(){
+        //given
+        Product product = MockFactory.buildProduct();
+
+        //when
+        when(repository.findDeleted(product.getId())).thenReturn(Optional.of(product));
+
+        //then
+        productServiceImpl.restoreProduct(product.getId());
+        verify(repository, times(1)).findDeleted(product.getId());
+        verify(repository, times(1)).restore(product.getId());
+    }
+
+    @Test
+    void shouldThrowErrorWhenProductIsNotFoundForRestore() {
+        //given
+        Product product = MockFactory.buildProduct();
+
+        //when
+        when(repository.findDeleted(product.getId())).thenReturn(Optional.empty());
+
+        //then
+        var error = assertThrows(NotFoundException.class, () -> productServiceImpl.restoreProduct(product.getId()));
+        assertEquals("the product has not been deleted", error.getMessage());
     }
 }

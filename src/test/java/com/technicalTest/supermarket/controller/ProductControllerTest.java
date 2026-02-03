@@ -19,7 +19,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 
@@ -186,7 +185,7 @@ public class ProductControllerTest {
 
         //when
         when(productService.getProductById(id))
-                .thenThrow(new NotFoundException("El producto no existe"));
+                .thenThrow(new NotFoundException("the product does not exist"));
 
         //then
         mockMvc.perform(
@@ -195,7 +194,7 @@ public class ProductControllerTest {
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("El producto no existe"));
+                .andExpect(jsonPath("$.message").value("the product does not exist"));
 
         verify(productService).getProductById(id);
     }
@@ -226,5 +225,63 @@ public class ProductControllerTest {
 
         //then
         verify(productService, never()).createProduct(any());
+    }
+
+
+    @Test
+    void getDeletedProducts() throws Exception {
+        // given
+        Pageable pageable = MockFactory.buildPageable();
+        Page<ProductDTO> productsPage = MockFactory.getProductsDTOPage(pageable);
+        Product product = MockFactory.buildProduct();
+
+        // when
+        when(productService.getDeletedProducts(any(Pageable.class))).thenReturn(productsPage);
+
+        // then
+        mockMvc.perform(
+                        get("/api/products/deleted")
+                                .param("page", "0")
+                                .param("size", "10")
+                                .param("sort", "id,asc")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .accept(MediaType.APPLICATION_JSON)
+                ).andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].id").value(product.getId()))
+                .andExpect(jsonPath("$.content[0].name").value(product.getName()))
+                .andExpect(jsonPath("$.content[0].price").value(product.getPrice()))
+                .andExpect(jsonPath("$.content[0].registrationDate").value("2026-01-01T01:01:01"))
+                .andExpect(jsonPath("$.content[0].modificationDate").value("2026-01-01T01:01:01"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.number").value(0));
+
+        verify(productService, times(1)).getDeletedProducts(any(Pageable.class));
+    }
+
+
+    @Test
+    void testRestoreProduct() throws Exception {
+        //given
+        Long id = 1L;
+        Product product = MockFactory.buildProduct();
+        ProductDTO dto = MockFactory.buildProductResponseDTO();
+
+        //when
+        when(productService.restoreProduct(id)).thenReturn(dto);
+
+        //then
+        mockMvc.perform(
+                patch("/api/products/{id}/restore", id)
+                        .accept(MediaType.APPLICATION_JSON)
+        ).andExpect(status().isOk())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(dto.getId()))
+                .andExpect(jsonPath("$.name").value(dto.getName()))
+                .andExpect(jsonPath("$.price").value(dto.getPrice()))
+                .andExpect(jsonPath("$.registrationDate").exists())
+                .andExpect(jsonPath("$.modificationDate").exists());
+
+        verify(productService).restoreProduct(id);
     }
 }

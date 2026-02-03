@@ -16,12 +16,17 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/products")
 public class ProductController {
 
-
     private final ProductService service;
 
-    @GetMapping()
+    @GetMapping
     public ResponseEntity<Page<ProductDTO>> getProducts(@PageableDefault Pageable pageable){
         Page<ProductDTO> products = service.getProducts(pageable);
+        return ResponseEntity.ok(products);
+    }
+
+    @GetMapping("/deleted")
+    public ResponseEntity <Page<ProductDTO>> getDeleteProducts(@PageableDefault Pageable pageable) {
+        Page<ProductDTO> products = service.getDeletedProducts(pageable);
         return ResponseEntity.ok(products);
     }
 
@@ -45,6 +50,11 @@ public class ProductController {
     public ResponseEntity<Void> deleteProduct(@PathVariable Long id){
         service.deleteProduct(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/{id}/restore")
+    public ResponseEntity<ProductDTO> restoreProduct(@PathVariable Long id){
+        return ResponseEntity.ok(service.restoreProduct(id));
     }
 
 }

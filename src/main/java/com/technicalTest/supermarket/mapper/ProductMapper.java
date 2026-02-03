@@ -12,11 +12,8 @@ import java.time.LocalDateTime;
         unmappedTargetPolicy = ReportingPolicy.IGNORE
 )
 public interface ProductMapper{
-
     void updateEntity(ProductDTO dto, @MappingTarget Product product);
-
     Product toEntity(ProductDTO dto);
-
     ProductDTO toDto(Product product);
 }
 

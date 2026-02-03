@@ -26,14 +26,14 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public Page<ProductDTO> getDeletedProducts(Pageable pageable) {
+        return repository.findAllDeleted(pageable).map(mapper::toDto);
+    }
+
+    @Override
     public ProductDTO getProductById(Long id) {
         Product product = repository.findById(id).orElseThrow(()
-                -> new NotFoundException("El producto no existe"));
-
-        if (product.isDeleted()) {
-            throw new NotFoundException("El producto no existe");
-        }
-
+                -> new NotFoundException("the product does not exist"));
         return mapper.toDto(product);
     }
 
@@ -47,7 +47,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public ProductDTO updateProduct(Long id, ProductDTO dto) {
         Product product = repository.findById(id).orElseThrow(()
-                -> new NotFoundException("El producto no existe"));
+                -> new NotFoundException("the product does not exist"));
         mapper.updateEntity(dto, product);
         return mapper.toDto(repository.save(product));
     }
@@ -55,8 +55,18 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void deleteProduct(Long id) {
-        Product product = repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("El producto no existe"));
-        repository.delete(product);
+        repository.findById(id).ifPresent(product->{
+            product.setDeleted(true);
+            repository.save(product);
+        });
+    }
+
+    @Override
+    @Transactional
+    public ProductDTO restoreProduct(Long id) {
+        Product product = repository.findDeleted(id).orElseThrow(()
+                -> new NotFoundException("the product has not been deleted"));
+        repository.restore(id);
+        return mapper.toDto(product);
     }
 }
